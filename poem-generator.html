@@ -1,0 +1,127 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>AI写诗与翻译</title>
+  <style>
+    body {
+      font-family: '微软雅黑', sans-serif;
+      background-color: #f9f9f9;
+      padding: 40px;
+      text-align: center;
+    }
+    input, button {
+      padding: 10px;
+      margin: 10px;
+      font-size: 16px;
+    }
+    #poem, #translation {
+      margin-top: 20px;
+      font-size: 18px;
+      color: #333;
+      white-space: pre-wrap;
+      border: 1px solid #ddd;
+      padding: 15px;
+      display: inline-block;
+      width: 80%;
+      max-width: 600px;
+      background-color: #fff;
+      border-radius: 10px;
+    }
+  </style>
+</head>
+<body>
+
+  <h1>AI根据关键词写诗并翻译</h1>
+  <p>请输入几个关键词（例如：春风 江南 落花）</p>
+  <input type="text" id="keywords" placeholder="关键词之间用空格或逗号分隔" style="width: 80%;" />
+  <br/>
+  <button onclick="generatePoem()">生成诗句</button>
+  <button onclick="translatePoem()" disabled id="translateBtn">翻译成英文</button>
+
+  <div id="poem"></div>
+  <div id="translation"></div>
+
+  <script>
+    let currentPoem = "";
+
+    async function generatePoem() {
+      const keywords = document.getElementById('keywords').value.trim();
+      if (!keywords) {
+        alert("请输入关键词！");
+        return;
+      }
+
+      const prompt = `根据以下关键词写一首中文小诗（两到三句）：${keywords}\n\n`;
+      const model = "uer/gpt2-chinese-poem";
+      const url = `https://api-inference.huggingface.co/models/${model}`; 
+      const apiKey = "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"; // 替换为你自己的 API Key
+
+      const response = await fetch(url, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "Authorization": `Bearer ${apiKey}`
+        },
+        body: JSON.stringify({
+          inputs: prompt,
+          parameters: {
+            max_new_tokens: 50,
+            temperature: 0.8,
+            top_p: 0.9,
+            do_sample: true
+          }
+        })
+      });
+
+      if (!response.ok) {
+        alert("请求失败，请检查网络或 API Key");
+        return;
+      }
+
+      const data = await response.json();
+      const generatedText = data?.[0]?.generated_text || "未能生成诗句";
+
+      currentPoem = generatedText.replace(prompt, "").trim();
+      document.getElementById("poem").innerText = currentPoem;
+
+      // 启用翻译按钮
+      document.getElementById("translateBtn").disabled = false;
+    }
+
+    async function translatePoem() {
+      if (!currentPoem) {
+        alert("没有可翻译的内容");
+        return;
+      }
+
+      const model = "Helsinki-NLP/opus-mt-zh-en";
+      const url = `https://api-inference.huggingface.co/models/${model}`; 
+      const apiKey = "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"; // 同上，替换为你自己的 API Key
+
+      const response = await fetch(url, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "Authorization": `Bearer ${apiKey}`
+        },
+        body: JSON.stringify({
+          inputs: currentPoem
+        })
+      });
+
+      if (!response.ok) {
+        alert("翻译失败，请稍后再试");
+        return;
+      }
+
+      const data = await response.json();
+      const translatedText = data?.[0]?.translation_text || "翻译失败";
+
+      document.getElementById("translation").innerText = translatedText;
+    }
+  </script>
+
+</body>
+</html>
