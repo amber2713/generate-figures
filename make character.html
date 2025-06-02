@@ -1,0 +1,103 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>AI角色生成器</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      background-color: #f4f4f4;
+      padding: 20px;
+      text-align: center;
+    }
+    input, button {
+      padding: 10px;
+      margin: 10px;
+      font-size: 16px;
+    }
+    #image-container img {
+      max-width: 100%;
+      margin-top: 20px;
+      border-radius: 10px;
+    }
+  </style>
+</head>
+<body>
+
+  <h1>AI角色生成器</h1>
+  <p>请输入三个描述关键词（例如：科幻 战士 红色盔甲）</p>
+  <input type="text" id="keyword1" placeholder="关键词1" />
+  <input type="text" id="keyword2" placeholder="关键词2" />
+  <input type="text" id="keyword3" placeholder="关键词3" />
+  <br/>
+  <button onclick="generateImage()">生成角色图片</button>
+
+  <div id="image-container"></div>
+
+  <script>
+    async function generateImage() {
+      const k1 = document.getElementById('keyword1').value.trim();
+      const k2 = document.getElementById('keyword2').value.trim();
+      const k3 = document.getElementById('keyword3').value.trim();
+
+      if (!k1 || !k2 || !k3) {
+        alert("请填写三个关键词！");
+        return;
+      }
+
+      const prompt = `a person wearing ${k1}, ${k2}, ${k3}, detailed, realistic`;
+      const url = "https://aihorde.net/api/v2/generate/async"; 
+
+      const body = {
+        prompt: prompt,
+        params: {
+          width: 512,
+          height: 768,
+          steps: 20,
+          n: 1
+        },
+        models: ["Deliberate v3"]
+      };
+
+      const headers = {
+        "Content-Type": "application/json"
+      };
+
+      // 如果你有 API Key，可以加上：
+      // headers["apikey"] = "你的API密钥";
+
+      const response = await fetch(url, {
+        method: "POST",
+        headers: headers,
+        body: JSON.stringify(body)
+      });
+
+      if (!response.ok) {
+        alert("请求失败，请稍后再试");
+        return;
+      }
+
+      const data = await response.json();
+      const id = data.id;
+
+      // 轮询检查结果
+      const interval = setInterval(async () => {
+        const checkRes = await fetch(`https://aihorde.net/api/v2/generate/check/${id}`); 
+        const result = await checkRes.json();
+
+        if (result.done) {
+          clearInterval(interval);
+          if (result.generations?.length > 0) {
+            const imageUrl = result.generations[0].img;
+            document.getElementById("image-container").innerHTML = `<img src="data:image/png;base64,${imageUrl}" alt="生成的图片"/>`;
+          } else {
+            alert("未返回图片，请重试");
+          }
+        }
+      }, 3000);
+    }
+  </script>
+
+</body>
+</html>
